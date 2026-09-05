@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "https://json.schemastore.org/package.json",
   "name": "opencode",
   "description": "AI-powered development tool",
@@ -40,9 +40,9 @@
       "@octokit/rest": "22.0.0",
       "@hono/standard-validator": "0.2.0",
       "@hono/zod-validator": "0.4.2",
-      "@opentui/core": "0.4.5",
-      "@opentui/keymap": "0.4.5",
-      "@opentui/solid": "0.4.5",
+      "@opentui/core": "0.5.10",
+      "@opentui/keymap": "0.5.10",
+      "@opentui/solid": "0.5.10",
       "@tanstack/solid-virtual": "3.13.32",
       "@shikijs/stream": "4.2.0",
       "ulid": "3.0.1",
@@ -138,9 +138,10 @@
   ],
   "overrides": {
     "@ai-sdk/anthropic": "3.0.111",
-    "@opentui/core": "catalog:",
-    "@opentui/keymap": "catalog:",
-    "@opentui/solid": "catalog:",
+    "@opentui/core": "file:../opentui/dist-tarballs/opentui-core-dist-0.5.10.tgz",
+    "@opentui/core-win32-x86": "file:../opentui/dist-tarballs/opentui-core-win32-x86-0.5.10.tgz",
+    "@opentui/keymap": "file:../opentui/dist-tarballs/opentui-keymap-0.5.10.tgz",
+    "@opentui/solid": "file:../opentui/dist-tarballs/opentui-solid-0.5.10.tgz",
     "@types/bun": "catalog:",
     "@types/node": "catalog:"
   },
@@ -165,3 +166,4 @@
     "@ai-sdk/amazon-bedrock@4.0.166": "patches/@ai-sdk%2Famazon-bedrock@4.0.166.patch"
   }
 }
+
