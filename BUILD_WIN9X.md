@@ -49,6 +49,17 @@ These are committed on the Bun branch and are the reason the win9x build works:
   borrowing (`to_slice_clone`).
 - **CJS loader stack limits**: `GetCurrentThreadStackLimits` returns the *reserved* stack
   bounds (via `VirtualQuery`), not the committed region, so deep requires don't overflow.
+- **bun:ffi 32-bit thunk libcalls** (`src/runtime/ffi/ffi_body.rs`): bun:ffi compiles call
+  thunks with TinyCC. On i586 the thunks lower 64-bit ops to compiler-rt libcalls — e.g.
+  `JSVALUE_TO_INT64`/`JSVALUE_TO_UINT64` in `FFI.h` cast `(int64_t)JSVALUE_TO_DOUBLE(...)`,
+  which TCC emits as `__fixdfdi`/`__fixunsdfdi` (and `__floatdidf` for i64 returns, plus
+  `memmove` for struct copies). `CompilerRT::inject` only registered symbols on x86_64, so
+  `dlopen` of any library whose signatures contain `f64`/`i64` failed with
+  `unresolved reference to '__fixdfdi'` (this is what broke OpenTUI's render library load).
+  Fixed by registering the 64-bit compiler-rt helpers (`__fixdfdi`, `__fixunsdfdi`,
+  `__floatdidf`, `__floatundidf`, `__muldi3`, `__udivdi3`, `__divdi3`, `__umoddi3`,
+  `__moddi3`, `__ashldi3`, `__ashrdi3`, `__lshrdi3`) and `memmove` in the TCC symbol table
+  on x86, mirroring the existing `memset`/`memcpy`/`JSVALUE_TO_INT64_SLOW` pattern.
 
 ### ASAN on win9x
 
