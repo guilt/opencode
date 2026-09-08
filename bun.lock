@@ -1082,8 +1082,8 @@
     "@ai-sdk/anthropic": "3.0.111",
     "@opentui/core": "file:../opentui/dist-tarballs/opentui-core-dist-0.5.10.tgz",
     "@opentui/core-win32-x86": "file:../opentui/dist-tarballs/opentui-core-win32-x86-0.5.10.tgz",
-    "@opentui/keymap": "file:../opentui/dist-tarballs/opentui-keymap-0.5.10.tgz",
-    "@opentui/solid": "file:../opentui/dist-tarballs/opentui-solid-0.5.10.tgz",
+    "@opentui/keymap": "file:../opentui/dist-tarballs/opentui-keymap-0.5.10-dist.tgz",
+    "@opentui/solid": "file:../opentui/dist-tarballs/opentui-solid-0.5.10-dist.tgz",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
   },
@@ -2060,9 +2060,9 @@
 
     "@opentui/core-win32-x86": ["@opentui/core-win32-x86@../opentui/dist-tarballs/opentui-core-win32-x86-0.5.10.tgz", {}, "sha512-w0/ZjP15MsZYBoHqcF4QVKs1tNg5Hp9xp/3geXN0yd7P1vtj2gc2jhWTSlWL0s3ZK4MJSZR9WI6cTtryzNqCSg=="],
 
-    "@opentui/keymap": ["@opentui/keymap@../opentui/dist-tarballs/opentui-keymap-0.5.10.tgz", { "dependencies": { "@opentui/core": "0.5.10" }, "peerDependencies": { "@opentui/react": "0.5.10", "@opentui/solid": "0.5.10", "react": ">=19.2.0", "solid-js": "1.9.12" }, "optionalPeers": ["@opentui/react", "@opentui/solid", "react", "solid-js"] }, "sha512-YB2IV7wJGPU9fvpYbL/W7p6LZZynn2ya9aV1FbhDImaaS3SM6XSAWryRQna7UFzGpbaRrgSpsf29BiE7OM409Q=="],
+    "@opentui/keymap": ["@opentui/keymap@../opentui/dist-tarballs/opentui-keymap-0.5.10-dist.tgz", { "dependencies": { "@opentui/core": "0.5.10" }, "peerDependencies": { "@opentui/react": "0.5.10", "@opentui/solid": "0.5.10", "react": ">=19.2.0", "solid-js": "1.9.12" }, "optionalPeers": ["@opentui/react", "@opentui/solid", "react", "solid-js"] }, "sha512-YbucYfGh2FNMcm4Bk0GUZVKwQ1lUQWP0hW4h2EQ9RMYPNGdngGcFWnI86zPb2cfvS9BecozYQsD0bGykS810ng=="],
 
-    "@opentui/solid": ["@opentui/solid@../opentui/dist-tarballs/opentui-solid-0.5.10.tgz", { "dependencies": { "@babel/core": "7.28.0", "@babel/preset-typescript": "7.27.1", "@opentui/core": "0.5.10", "babel-plugin-module-resolver": "5.0.2", "babel-preset-solid": "1.9.12", "entities": "7.0.1", "s-js": "^0.4.9" }, "peerDependencies": { "solid-js": "1.9.12" } }, "sha512-OAmHDXJwAZaOgCqGucgPkeql3uJ9yWjRgFTaXJfzYypG/WvqNKdg1skR0h98N76ORqNwAU93/ImISOeQr/GWog=="],
+    "@opentui/solid": ["@opentui/solid@../opentui/dist-tarballs/opentui-solid-0.5.10-dist.tgz", { "dependencies": { "@babel/core": "7.28.0", "@babel/preset-typescript": "7.27.1", "@opentui/core": "0.5.10", "babel-plugin-module-resolver": "5.0.2", "babel-preset-solid": "1.9.12", "entities": "7.0.1", "s-js": "^0.4.9" }, "peerDependencies": { "solid-js": "1.9.12" } }, "sha512-43IZ3Qx4ocL3hQ6C2wtCSeQT8Kc81rBXL0/zLHj71ueHQKlmiV9xdNh++9G82HeTsWPl4ky046ZbCpy4bi1dMQ=="],
 
     "@oslojs/asn1": ["@oslojs/asn1@1.0.0", "", { "dependencies": { "@oslojs/binary": "1.0.0" } }, "sha512-zw/wn0sj0j0QKbIXfIlnEcTviaCzYOY3V5rAyjR6YtOByFtJiT574+8p9Wlach0lZH9fddD4yb9laEAIl4vXQA=="],
 

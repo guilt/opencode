@@ -140,8 +140,8 @@
     "@ai-sdk/anthropic": "3.0.111",
     "@opentui/core": "file:../opentui/dist-tarballs/opentui-core-dist-0.5.10.tgz",
     "@opentui/core-win32-x86": "file:../opentui/dist-tarballs/opentui-core-win32-x86-0.5.10.tgz",
-    "@opentui/keymap": "file:../opentui/dist-tarballs/opentui-keymap-0.5.10.tgz",
-    "@opentui/solid": "file:../opentui/dist-tarballs/opentui-solid-0.5.10.tgz",
+    "@opentui/keymap": "file:../opentui/dist-tarballs/opentui-keymap-0.5.10-dist.tgz",
+    "@opentui/solid": "file:../opentui/dist-tarballs/opentui-solid-0.5.10-dist.tgz",
     "@types/bun": "catalog:",
     "@types/node": "catalog:"
   },
@@ -166,4 +166,5 @@
     "@ai-sdk/amazon-bedrock@4.0.166": "patches/@ai-sdk%2Famazon-bedrock@4.0.166.patch"
   }
 }
+
 

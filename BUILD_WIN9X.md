@@ -117,10 +117,13 @@ bun install                                        # at the opentui repo root
 mkdir -p packages/core/node_modules/@opentui/core-win32-x86
 cp packages/native/lib/x86-windows-gnu/opentui.dll packages/core/node_modules/@opentui/core-win32-x86/
 
-# pack publish-style tarballs (dist has its own package.json with compiled exports)
+# pack publish-style tarballs (from each package's `dist`, so the compiled
+# exports are used — NOT the `src/` exports in the source package.json, which
+# fail opencode's stricter tsconfig)
 bun pm pack --destination dist-tarballs            # from packages/core/dist
 bun pm pack --destination dist-tarballs            # from packages/core/node_modules/@opentui/core-win32-x86
-bun pm pack --destination dist-tarballs            # from packages/solid, packages/keymap
+bun pm pack --destination dist-tarballs            # from packages/solid/dist, packages/keymap/dist
+# (if bun pm pack rejects workspace:* devDeps, replace them with the version first)
 ```
 
 The `dist-tarballs/` directory is expected at `D:\WS\opentui\dist-tarballs` (mirrored by the
