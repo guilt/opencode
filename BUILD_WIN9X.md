@@ -60,6 +60,20 @@ These are committed on the Bun branch and are the reason the win9x build works:
   `__floatdidf`, `__floatundidf`, `__muldi3`, `__udivdi3`, `__divdi3`, `__umoddi3`,
   `__moddi3`, `__ashldi3`, `__ashrdi3`, `__lshrdi3`) and `memmove` in the TCC symbol table
   on x86, mirroring the existing `memset`/`memcpy`/`JSVALUE_TO_INT64_SLOW` pattern.
+- **bun:ffi JSValue encoding on 32-bit** (`src/runtime/ffi/FFI.h` + `ffi_body.rs` +
+  `host_fns.rs`): the JSC port on 32-bit x86 is **USE_JSVALUE32_64** (64-bit box with a
+  32-bit tag in the high word), but bun:ffi's FFI.h hardcoded USE_JSVALUE64 tags
+  (`NumberTag 0xFFFE…`, `DoubleEncodeOffset 1<<49`). Every non-`void` FFI return was
+  garbage — a `u32` return decoded as `NaN`, so `createEventSink`/`createTextBuffer` (and
+  anything returning a small int32) failed while large values coincidentally round-tripped.
+  Fixed by making FFI.h arch-aware (`BUN_FFI_JSVALUE32` is emitted by the thunk codegen):
+  USE_JSVALUE32_64 tags (`Int32Tag 0xFFFFFFFF`, doubles stored as raw IEEE bits, cells
+  tagged `0xFFFFFFFB`) for `INT32/DOUBLE/FLOAT/BOOL/PTR_TO_JSVALUE`, `JSVALUE_TO_*`, typed
+  arrays, and the `ValueUndefined`/`ValueTrue` globals. Two 32-bit call-frame bugs fixed in
+  the same pass: `size_t`/`intptr_t`/`uintptr_t` were typedef'd 64-bit (so
+  `LOAD_ARGUMENTS_FROM_CALL_FRAME` read the argument list 24 bytes past its real start),
+  and `Bun_FFI_PointerOffsetToArgumentsList` (6 words on x64) must be **10** `size_t`
+  units on 32-bit (arg0 is at Register slot 5 × 8-byte slots).
 
 ### ASAN on win9x
 
