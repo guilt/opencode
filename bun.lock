@@ -1080,7 +1080,7 @@
   },
   "overrides": {
     "@ai-sdk/anthropic": "3.0.111",
-    "@opentui/core": "file:../opentui/dist-tarballs/opentui-core-x86fix-0.5.10.tgz",
+    "@opentui/core": "file:../opentui/dist-tarballs/opentui-core-ptr-0.5.10.tgz",
     "@opentui/core-win32-x86": "file:../opentui/dist-tarballs/opentui-core-win32-x86-0.5.10.tgz",
     "@opentui/keymap": "file:../opentui/dist-tarballs/opentui-keymap-0.5.10-dist.tgz",
     "@opentui/solid": "file:../opentui/dist-tarballs/opentui-solid-0.5.10-dist.tgz",
@@ -2038,7 +2038,7 @@
 
     "@opentelemetry/semantic-conventions": ["@opentelemetry/semantic-conventions@1.41.1", "", {}, "sha512-/UhIkaZgPutTFmQ7RnIJGgDXZmtEJ7Dvi86xNTFWcnRxVRNk/aotsqDJYeEvDP+FSMB2SdW+pQzNMcWP0rwuNA=="],
 
-    "@opentui/core": ["@opentui/core@../opentui/dist-tarballs/opentui-core-x86fix-0.5.10.tgz", { "dependencies": { "bun-ffi-structs": "0.3.1", "diff": "9.0.0", "marked": "17.0.1", "string-width": "7.2.0", "strip-ansi": "7.1.2" }, "optionalDependencies": { "@opentui/core-darwin-arm64": "0.5.10", "@opentui/core-darwin-x64": "0.5.10", "@opentui/core-linux-arm64": "0.5.10", "@opentui/core-linux-arm64-musl": "0.5.10", "@opentui/core-linux-x64": "0.5.10", "@opentui/core-linux-x64-musl": "0.5.10", "@opentui/core-win32-arm64": "0.5.10", "@opentui/core-win32-x64": "0.5.10", "@opentui/core-win32-x86": "0.5.10" }, "peerDependencies": { "web-tree-sitter": "0.25.10" } }, "sha512-LHzI4kAS64//K2enJYHLWkUgkabAGaWk4IaeYGkrmYDwlBbp8LBfyveqZIbDlXm6qzjlcnW1zynVOgDBNmbiKw=="],
+    "@opentui/core": ["@opentui/core@../opentui/dist-tarballs/opentui-core-ptr-0.5.10.tgz", { "dependencies": { "bun-ffi-structs": "0.3.1", "diff": "9.0.0", "marked": "17.0.1", "string-width": "7.2.0", "strip-ansi": "7.1.2" }, "optionalDependencies": { "@opentui/core-darwin-arm64": "0.5.10", "@opentui/core-darwin-x64": "0.5.10", "@opentui/core-linux-arm64": "0.5.10", "@opentui/core-linux-arm64-musl": "0.5.10", "@opentui/core-linux-x64": "0.5.10", "@opentui/core-linux-x64-musl": "0.5.10", "@opentui/core-win32-arm64": "0.5.10", "@opentui/core-win32-x64": "0.5.10", "@opentui/core-win32-x86": "0.5.10" }, "peerDependencies": { "web-tree-sitter": "0.25.10" } }, "sha512-ltGUmh3EPQkzXIL3Ypddhid5z/l1SeqSqAX543ArSyYbIadNyKqJyolcnTULYC9YphGYZ01cb+V+XgXrh5IvHQ=="],
 
     "@opentui/core-darwin-arm64": ["@opentui/core-darwin-arm64@0.5.10", "", { "os": "darwin", "cpu": "arm64" }, "sha512-Vyb+nTbhab8ZcRy5gg1loEEGwRcIbjAeVRIBfHBcbFDqmITBOg7x2gqJ+x/TnoOy4uwMhCmICUN2wiyREw3r1Q=="],
 

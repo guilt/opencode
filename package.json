@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://json.schemastore.org/package.json",
   "name": "opencode",
   "description": "AI-powered development tool",
@@ -138,7 +138,7 @@
   ],
   "overrides": {
     "@ai-sdk/anthropic": "3.0.111",
-    "@opentui/core": "file:../opentui/dist-tarballs/opentui-core-x86fix-0.5.10.tgz",
+    "@opentui/core": "file:../opentui/dist-tarballs/opentui-core-ptr-0.5.10.tgz",
     "@opentui/core-win32-x86": "file:../opentui/dist-tarballs/opentui-core-win32-x86-0.5.10.tgz",
     "@opentui/keymap": "file:../opentui/dist-tarballs/opentui-keymap-0.5.10-dist.tgz",
     "@opentui/solid": "file:../opentui/dist-tarballs/opentui-solid-0.5.10-dist.tgz",
@@ -166,6 +166,3 @@
     "@ai-sdk/amazon-bedrock@4.0.166": "patches/@ai-sdk%2Famazon-bedrock@4.0.166.patch"
   }
 }
-
-
-

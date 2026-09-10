@@ -130,7 +130,7 @@ try {
   if (formatted) UI.error(formatted)
   if (formatted === undefined) {
     UI.error("Unexpected error" + EOL)
-    process.stderr.write(errorMessage(e) + EOL)
+    process.stderr.write((e instanceof Error ? e.stack : String(e)) + EOL)
   }
   process.exitCode = 1
 } finally {
