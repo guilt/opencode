@@ -18,7 +18,7 @@ every fork and change involved, and how to reproduce the build.
 | `opencode` | `D:\WS\OpenCode` | `guilt/opencode` | This repo |
 
 The OpenTUI fork (`guilt/opentui`, branch `main`) carries the 32-bit x86 fixes; OpenCode
-pins `@opentui/*` to `0.5.10` via `overrides` pointing at locally-packed fork tarballs.
+pins `@opentui/*` to `0.5.11` via `overrides` pointing at locally-packed fork tarballs.
 
 ---
 
@@ -109,6 +109,9 @@ The fork adds 32-bit `win32-x86` support:
   - 32-bit x86 has no `u64` atomics (`@atomicRmw`/`@atomicLoad` reject u64), so the
     diagnostic frame/byte counters are `u32` atomics (wrap at ~4.3 billion — infeasible for
     a session) and are widened to the `u64` extern-struct fields on snapshot.
+  - On the **0.5.11** rebase, three `@atomicLoad(u64, &stream.bytes_received/frames_decoded)`
+    reads were reintroduced upstream and must read the `u32` fields instead
+    (`@as(u64, @atomicLoad(u32, ...))`).
 - **`packages/core/src/node-asset-target.ts`**
   - Accepts `x86` as a native asset arch → resolves `@opentui/core-win32-x86/opentui.dll`.
 - **`packages/core/package.json`** — `@opentui/core-win32-x86` added to `optionalDependencies`.
@@ -162,7 +165,7 @@ The `dist-tarballs/` directory is expected at `D:\WS\opentui\dist-tarballs` (mir
 
 `package.json` (root):
 
-- The `catalog` pins `@opentui/*` to `0.5.10`.
+- The `catalog` pins `@opentui/*` to `0.5.11`.
 - `overrides` redirect the four packages to the local fork tarballs:
   `@opentui/core`, `@opentui/core-win32-x86`, `@opentui/keymap`, `@opentui/solid`.
 - `bun install` resolves them into `node_modules/.bun`.
