@@ -210,3 +210,36 @@ dist/opencode-windows-x86/bin/opencode.exe --help      # renders the OpenTUI ban
 If the OpenTUI render library fails to load you'll see
 `Failed to initialize OpenTUI render library: Unsupported OpenTUI Node asset target: win32-x86`
 — that means the fork tarballs / win32-x86 native package aren't wired up (see §2–§3).
+
+---
+
+## 5. XP / 9x compatibility of `opentui.dll`
+
+The 32-bit `opentui.dll` is loaded by `opencode.exe` at runtime. To load on Windows XP
+(and, in principle, 9x) it must not import Vista+/Win8+ APIs or the UCRT. Three layers
+were handled (all in the `guilt/opentui` fork):
+
+1. **Vista+ kernel32/ntdll entry points eliminated** — SRW locks, condition variables,
+   Fls, `InitOnceExecuteOnce`, `GetSystemTimePreciseAsFileTime`, `GetThreadId`,
+   `K32EnumProcessModules`, and the ntdll `Nt*` threading/notification functions are
+   stubbed with XP-safe primitives. `src/win9x_compat.c` implements private
+   `win9x_*` stubs; `src/win9x_imports.asm` (assembled with **NASM**, `-f win32`)
+   defines `__imp__Foo@N` DATA symbols + `_Foo@N` code thunks that beat the import
+   library, so no IAT entry is created.
+2. **UCRT (api-ms-win-crt-*) remapped to msvcrt.dll** — the 45 CRT functions that exist
+   in XP's `msvcrt.dll` are redirected there via a custom import library generated from
+   `src/ucrt_msvcrt.def` (`lib.exe /def:… /machine:x86`). This removes the
+   `api-ms-win-crt-heap/convert/filesystem/math/private/string/time/utility` imports.
+3. **Remaining 10 UCRT-internal functions** (stdio routing `__acrt_iob_func` /
+   `__stdio_common_*`, `_close`, and the onexit/init tables) are provided by two tiny
+   shim DLLs shipped next to `opencode.exe`:
+   `api-ms-win-crt-stdio-l1-1-0.dll` and `api-ms-win-crt-runtime-l1-1-0.dll`
+   (`src/ucrt_shim.c`, built with clang-cl, `/NODEFAULTLIB`, kernel32-only). They
+   resolve msvcrt functions at runtime via `GetProcAddress` so they load even where
+   modern `msvcrt.dll` lacks the plain names.
+
+Net: `opentui.dll` imports only `msvcrt.dll`, the two shims, and XP-safe
+`KERNEL32`/`ntdll`/`USER32`. `opencode.exe` itself declares subsystem 5.01 (XP) and
+its (embedded Bun) imports are XP-present DLLs; **Windows 9x is not feasible** because
+the Bun runtime imports NT-only DLLs (`ntdll.dll`, `USERENV.dll`, `IPHLPAPI.dll`,
+`WS2_32.dll`) that don't exist on 95/98/ME.
