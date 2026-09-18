@@ -237,8 +237,17 @@ were handled (all in the `guilt/opentui` fork):
    (`src/ucrt_shim.c`, built with clang-cl, `/NODEFAULTLIB`, kernel32-only). They
    resolve msvcrt functions at runtime via `GetProcAddress` so they load even where
    modern `msvcrt.dll` lacks the plain names.
+4. **`wcsrtombs` (Vista+ CRT)** — `msvcrt.dll` on XP does not export it, so it stays
+   on the UCRT (Zig binds it to `api-ms-win-crt-convert-l1-1-0.dll`). A third shim,
+   `api-ms-win-crt-convert-l1-1-0.dll`, implements it on top of msvcrt's `wcstombs`.
+   The msvcrt remap def must NOT list `wcsrtombs`; the import lib is generated with
+   **GNU `dlltool`** (not `lib.exe /def:`, which emits empty import records here) and
+   includes the data symbol `_iob` used by the stdio shims.
+5. **`RtlExitUserProcess` / `RtlQueryPerformanceCounter` / `RtlQueryPerformanceFrequency`
+   (Vista+ ntdll)** — absent from XP's ntdll; stubbed in `win9x_compat.c` on top of the
+   kernel32 equivalents, with `__imp_` redirects in `win9x_imports.asm`.
 
-Net: `opentui.dll` imports only `msvcrt.dll`, the two shims, and XP-safe
+Net: `opentui.dll` imports only `msvcrt.dll`, the three shims, and XP-safe
 `KERNEL32`/`ntdll`/`USER32`. `opencode.exe` itself declares subsystem 5.01 (XP) and
 its (embedded Bun) imports are XP-present DLLs; **Windows 9x is not feasible** because
 the Bun runtime imports NT-only DLLs (`ntdll.dll`, `USERENV.dll`, `IPHLPAPI.dll`,
