@@ -252,3 +252,68 @@ Net: `opentui.dll` imports only `msvcrt.dll`, the three shims, and XP-safe
 its (embedded Bun) imports are XP-present DLLs; **Windows 9x is not feasible** because
 the Bun runtime imports NT-only DLLs (`ntdll.dll`, `USERENV.dll`, `IPHLPAPI.dll`,
 `WS2_32.dll`) that don't exist on 95/98/ME.
+
+---
+
+## 6. XP runtime: `fs.rm` recursive fails (EINVAL) and the models-dev lock stall
+
+### Symptom
+
+Every XP boot of `opencode.exe` stalled for ~5 minutes at `message=init` (one core pegged)
+before rendering, with log errors:
+
+- `Failed to fetch models.dev cause=... EINVAL: invalid argument, rm '...\locks\<hash>.lock'`
+- `background dependency install failed ... Timed out waiting for lock: models-dev:...`
+
+### Root cause
+
+OpenCode's `Flock` (`packages/core/src/util/flock.ts`) deletes lock directories with
+`fs.rm(path, { recursive: true, force: true })`. On the win9x Bun that call fails with
+**EINVAL for any directory that has children**. Probe results on XP (bun 1.4.0):
+
+| call | XP result |
+| --- | --- |
+| `rm(empty dir, { recursive: true })` | OK |
+| `rm(dir with children, { recursive: true })` | **EINVAL** |
+| `rmdir(dir)` / `unlink(file)` / `rm(file)` / `rm(nonexistent, force)` | OK |
+| `readdir` / `opendir` (full iteration) | OK |
+
+So `Flock.release()` threw and left `heartbeat` + `meta.json` behind, and every later
+acquire found the stale lock plus a stale `.breaker` claim whose own cleanup also used
+`rm(recursive)`. The breaker-removal error was swallowed, so the acquire loop spun
+silently for the full 5-minute `timeoutMs` (the pegged CPU) and then threw
+`Timed out waiting for lock`.
+
+### Bun-side diagnosis (open, tracked in the Bun fork)
+
+The failure is not in XP's NT layer. Native probes (`ntprobe.c`, `relprobe.c`, VS2005
+on the XP box) show correct behavior for every primitive bun sits on:
+
+- `NtCreateFile(dir, FILE_NON_DIRECTORY_FILE)` → `0xC00000BA`
+  (`STATUS_FILE_IS_A_DIRECTORY`, the status bun maps to `EISDIR`),
+- `NtCreateFile` with `RootDirectory` + relative names (file / subdir / missing) →
+  `SUCCESS` / `FILE_IS_A_DIRECTORY` / `OBJECT_NAME_NOT_FOUND` as appropriate,
+- `FileDispositionInformationEx` (class 64) → `STATUS_INVALID_INFO_CLASS` (Vista+;
+  the legacy class-13 fallback engages, as designed).
+
+Empty-dir `rm` succeeds on XP, so `zig_delete_tree`'s prologue (initial unlink probe →
+EISDIR flip → dir open → iteration → final `rmdir`) works; only the **child walk**
+fails (`src/runtime/node/node_fs.rs` → `dt_delete_file` / `dt_open_dir` with a
+directory-fd). Suspects are bun's relative-path wrappers
+(`openat_windows` / `normalize_path_windows`, `unlinkat` → `DeleteFileBun`).
+
+### OpenCode-side fix (landed)
+
+`Flock` now removes lock directories through `removeLockDir()`:
+
+1. try `fs.rm(recursive)` (fast path, one syscall),
+2. on failure fall back to a manual bottom-up delete using the primitives that work on
+   XP (`readdir` + `unlink` + `rmdir`),
+3. throw only when the directory survives both attempts — and stale `.breaker` eviction
+   now throws instead of swallowing, so cleanup failures surface immediately instead of
+   as a 5-minute timeout.
+
+Verified on XP with the exact broken state seeded first (2-hour-stale `*.lock` with
+children plus a stale `*.lock.breaker`): the new binary evicted the breaker, broke and
+re-acquired the `models-dev` lock within seconds, reached `message=init` normally, and
+the log contains no `Timed out waiting for lock` / `EINVAL` entries.
