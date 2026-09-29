@@ -1,7 +1,7 @@
 import path from "path"
 import os from "os"
 import { randomBytes, randomUUID } from "crypto"
-import { mkdir, readFile, rm, stat, utimes, writeFile } from "fs/promises"
+import { mkdir, readdir, readFile, rm, rmdir, stat, utimes, unlink, writeFile } from "fs/promises"
 import { Hash } from "./hash"
 import { Effect } from "effect"
 
@@ -71,6 +71,31 @@ export namespace Flock {
     const value = err.code
     if (typeof value !== "string") return
     return value
+  }
+
+  // bun's fs.rm(path, { recursive: true }) fails with EINVAL for directories
+  // that have children on Windows XP, so lock cleanup (release, stale-breaker
+  // eviction) wedges there: release leaves the lock behind and the
+  // stale-breaker loop spins silently until the 5-minute acquire timeout.
+  // The individual primitives — readdir, unlink, rmdir — all work on XP, so
+  // probe the fast path first and fall back to a manual bottom-up delete.
+  // Throws only when the directory survives both attempts, so callers surface
+  // a real cleanup failure instead of timing out with no error.
+  async function removeLockDir(target: string) {
+    try {
+      await rm(target, { recursive: true, force: true })
+      return
+    } catch {}
+    const entries = await readdir(target, { withFileTypes: true }).catch(() => [])
+    for (const entry of entries) {
+      const child = path.join(target, entry.name)
+      if (entry.isDirectory()) await removeLockDir(child)
+      else await unlink(child).catch(() => undefined)
+    }
+    await rmdir(target).catch(() => undefined)
+    if (await stat(target).catch(() => undefined)) {
+      throw new Error(`Failed to remove lock directory: ${target}`)
+    }
   }
 
   function sleep(ms: number, signal?: AbortSignal) {
@@ -169,7 +194,9 @@ export namespace Flock {
         if (errCode === "EEXIST") {
           const breaker = await stats(breakerPath)
           if (breaker && wall() - breaker.mtimeMs > opts.staleMs) {
-            await rm(breakerPath, { recursive: true, force: true }).catch(() => undefined)
+            // A stale breaker whose cleanup fails must surface as an error,
+            // not spin the acquire loop silently until the timeout.
+            await removeLockDir(breakerPath)
           }
           return { acquired: false }
         }
@@ -187,7 +214,7 @@ export namespace Flock {
           return { acquired: false }
         }
 
-        await rm(lockDir, { recursive: true, force: true })
+        await removeLockDir(lockDir)
 
         try {
           await mkdir(lockDir, { mode: 0o700 })
@@ -199,7 +226,7 @@ export namespace Flock {
           throw retryErr
         }
       } finally {
-        await rm(breakerPath, { recursive: true, force: true }).catch(() => undefined)
+        await removeLockDir(breakerPath).catch(() => undefined)
       }
     }
 
@@ -211,12 +238,12 @@ export namespace Flock {
     }
 
     await writeFile(heartbeatPath, "", { flag: "wx" }).catch(async () => {
-      await rm(lockDir, { recursive: true, force: true })
+      await removeLockDir(lockDir).catch(() => undefined)
       throw new Error("Lock acquired but heartbeat already existed (possible compromise).")
     })
 
     await writeFile(metaPath, JSON.stringify(meta, null, 2), { flag: "wx" }).catch(async () => {
-      await rm(lockDir, { recursive: true, force: true })
+      await removeLockDir(lockDir).catch(() => undefined)
       throw new Error("Lock acquired but meta.json already existed (possible compromise).")
     })
 
@@ -261,7 +288,7 @@ export namespace Flock {
         throw new Error("Refusing to release: lock token mismatch (not the owner).")
       }
 
-      await rm(lockDir, { recursive: true, force: true })
+      await removeLockDir(lockDir)
     }
 
     return {
