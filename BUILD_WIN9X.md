@@ -116,42 +116,67 @@ The fork adds 32-bit `win32-x86` support:
   - Accepts `x86` as a native asset arch → resolves `@opentui/core-win32-x86/opentui.dll`.
 - **`packages/core/package.json`** — `@opentui/core-win32-x86` added to `optionalDependencies`.
 
-### Building the 32-bit native library
+### Building the 32-bit native library (clean-tree recipe)
 
 The native build pins **Zig 0.16.0** (`.zig-version`). Use the x86_64 host Zig (the 32-bit
-host Zig has a build-system bug on 32-bit) — it cross-compiles fine:
+host Zig has a build-system bug on 32-bit) — it cross-compiles fine. Required on PATH:
+that Zig, **NASM** (`build.zig` assembles `src/win9x_imports.asm` via `nasm -f win32`), and
+**GNU dlltool** (`D:\WS\EXTDEV\MinGW\x86\Bin\dlltool.exe` — NOT `lib.exe /def:`, see §5).
 
 ```sh
 cd packages/native
-# deps (uucode, yoga, ghostty) ship in src/vendor/zig-deps.tar.gz; extracted by:
-sh scripts/prepare-zig-deps.sh
-# build 32-bit Windows DLL (ReleaseFast):
-zig build -Dlibrary-target=x86-windows-gnu -Doptimize=ReleaseFast
-# → packages/native/lib/x86-windows-gnu/opentui.dll  (coff-i386)
+
+# 1. deps (uucode, yoga, ghostty) ship in src/vendor/zig-deps.tar.gz; extracted by:
+sh scripts/prepare-zig-deps.sh            # → zig-deps/{uucode-opentui,ghostty,yoga}
+
+# 2. lib/ucrt_msvcrt.lib is a generated *link input* (build.zig does
+#    addObjectFile for it on x86) that lives in the gitignored lib/ dir —
+#    regenerate it whenever it is missing (a `git clean -fdx` deletes it):
+mkdir -p lib
+dlltool -d src\ucrt_msvcrt.def -l lib\ucrt_msvcrt.lib -m i386   # ~33 KB
+
+# 3. build the 32-bit Windows DLL (ReleaseSafe is what we ship):
+zig build -Dlibrary-target=x86-windows-gnu -Doptimize=ReleaseSafe
+# → packages/native/lib/x86-windows/opentui.dll + opentui.pdb  (coff-i386)
+#   NOTE: the output dir is lib/x86-windows/ — the -gnu ABI suffix is elided
+#   in output_name; lib/x86-windows-gnu/ does not exist.
 ```
+
+The zig build itself needs **no UCRT shim DLLs** — the `api-ms-win-crt-*` shims of §5 are
+runtime-only (consumed when the built DLL is loaded on XP), never build inputs.
 
 ### Packaging the fork for OpenCode
 
-OpenCode's `overrides` point at locally-packed fork tarballs. Rebuild them from the fork:
+OpenCode's `overrides` point at locally-packed fork tarballs. Rebuild them from the fork
+(all four tarballs must carry **0.5.11** — OpenCode's `catalog` pins `@opentui/*` to
+`0.5.11` and the overrides redirect them to these files):
 
 ```sh
-# JS packages
 bun install                                        # at the opentui repo root
+
+# JS packages
 (cd packages/core && bun run build:lib)            # builds dist/
 (cd packages/solid && bun run build)
 (cd packages/keymap && bun run build)
 
-# win32-x86 native package (DLL + index files), see packages/core/scripts/build.ts --native
-mkdir -p packages/core/node_modules/@opentui/core-win32-x86
-cp packages/native/lib/x86-windows-gnu/opentui.dll packages/core/node_modules/@opentui/core-win32-x86/
+# win32-x86 native package: variants.ts includes { platform: "win32", arch: "x86" },
+# so the staging step picks up lib/x86-windows/ and emits
+# @opentui/core-win32-x86 (DLL + index files + licenses) at
+# packages/core/node_modules/@opentui/core-win32-x86
+(cd packages/core && bun scripts/build.ts --native --skip-zig --all --skip-symbols)
 
 # pack publish-style tarballs (from each package's `dist`, so the compiled
 # exports are used — NOT the `src/` exports in the source package.json, which
 # fail opencode's stricter tsconfig)
-bun pm pack --destination dist-tarballs            # from packages/core/dist
-bun pm pack --destination dist-tarballs            # from packages/core/node_modules/@opentui/core-win32-x86
-bun pm pack --destination dist-tarballs            # from packages/solid/dist, packages/keymap/dist
-# (if bun pm pack rejects workspace:* devDeps, replace them with the version first)
+bun pm pack --destination <repo-root>/dist-tarballs   # cwd: packages/core/dist
+bun pm pack --destination <repo-root>/dist-tarballs   # cwd: packages/core/node_modules/@opentui/core-win32-x86
+bun pm pack --destination <repo-root>/dist-tarballs   # cwd: packages/solid/dist
+bun pm pack --destination <repo-root>/dist-tarballs   # cwd: packages/keymap/dist
+# (if bun pm pack rejects `workspace:*` devDeps, replace them with "0.5.11"
+#  in that dist/package.json first)
+
+# rename the x86 tarball to the name OpenCode's override expects:
+mv dist-tarballs/opentui-core-win32-x86-0.5.11.tgz dist-tarballs/opentui-core-win32-x86-511.tgz
 ```
 
 The `dist-tarballs/` directory is expected at `D:\WS\opentui\dist-tarballs` (mirrored by the
@@ -175,8 +200,10 @@ The fork core is consumed from its **compiled `dist`** (publish-style package.js
 
 ### The win9x build script
 
-`packages/opencode/script/build-win9x.ts` is **gitignored** (`script/build-*.ts`) — it is a
-local, machine-specific script. It runs `Bun.build` with:
+`packages/opencode/script/build-win9x.ts` is **force-tracked in git** — it still matches
+the `script/build-*.ts` ignore rule (so plain `git add` needs `-f`). It used to be
+ignored + machine-local only, and a `git clean -fdx` destroyed it; it is committed now,
+do not un-track it. The script runs `Bun.build` with:
 
 - `compile.target = "bun-windows-x86"` (win9x standalone).
 - The OpenTUI Solid transform plugin (`@opentui/solid/bun-plugin`) for `.tsx`.
@@ -189,8 +216,14 @@ local, machine-specific script. It runs `Bun.build` with:
 ```sh
 cd packages/opencode
 D:\WS\Bun\build\release-i586\bun.exe script/build-win9x.ts
-# → dist/opencode-windows-x86/bin/opencode.exe  (coff-i386, ~139 MB)
+# → dist/opencode-windows-x86/bin/opencode.exe  (coff-i386, ~165 MB with the
+#   embedded Web UI; pass --skip-embed-web-ui to leave it out)
 ```
+
+> **Version string:** `Script.version` (`packages/script`) prefers the shell's
+> `OPENCODE_VERSION` env var over everything else — a stale value gets baked into the
+> binary via the `OPENCODE_VERSION` define and shows up in `--version`. Unset it before
+> building (without it, the script fetches the latest published version from npm).
 
 ### Known upstream gap: FFF native library
 
