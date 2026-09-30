@@ -418,11 +418,45 @@ patch-regen recipe: the Bun repo's `BUILD_WIN9X.md` → "libuv: XP slow-select p
   `opencode.exe models` re-fetches the catalog (5,264,597 bytes) and exits 0 —
   no `Failed to fetch models.dev`, no `toPublicInfo` TypeError in any log.
 
-### Note: XP root certificates
+### XP root certificates (refreshed)
 
-HTTPS uses the system CA store (`--use-system-ca` in `execArgv`). XP's root store
-is frozen/stale, so any certificate whose chain relies on roots rolled after XP's
-era fails TLS regardless of this transport fix — models.dev and the shipped model
-endpoints currently verify fine on the test box, but future root/leaf rollovers are
-a separate, expected risk worth re-checking when a fetch suddenly starts failing
-at the TLS layer instead of mid-transfer.
+HTTPS uses the system CA store (`--use-system-ca` in `execArgv`). The test box's
+store had collapsed to **7 certificates** — no ISRG/Let's Encrypt, Google Trust
+Services, DigiCert G2, or USERTrust — so `--use-system-ca` trust only worked for
+whatever those seven covered. Refreshed from the host's own trusted roots:
+
+1. On a modern Windows host, export the valid self-signed roots to a `.reg`
+   script (`packages/opencode/script/export-xp-roots.ps1`, run with the host's
+   PowerShell):
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File script/export-xp-roots.ps1
+   # → %TEMP%\opencode\xp-roots.reg   (one HKLM SystemCertificates\Root value per root)
+   ```
+
+   The box's `certutil.exe` is missing, so import is done via `regedit`; the
+   exporter emits `Windows Registry Editor Version 5.00` entries whose value
+   name is the (lowercase) thumbprint and whose `hex:` payload is the DER.
+
+2. Copy it over and import silently (Karthik is an Administrator; XP has no UAC):
+
+   ```bat
+   regedit /s xp-roots.reg
+   ```
+
+3. Verify (counts, ISRG X1, live TLS):
+
+   ```bat
+   reg query "HKLM\SOFTWARE\Microsoft\SystemCertificates\Root\Certificates" | find /c HKEY
+   rem expect ~70+ (was 7) and the ISRG X1 key (lowercase thumbprint):
+   reg query "HKLM\SOFTWARE\Microsoft\SystemCertificates\Root\Certificates\cabd2a79a1076a31f21d253635cb039d4329a5e8"
+   ```
+
+   ```sh
+   bun.exe --use-system-ca -e <fetch letsencrypt.org + google.com + models.dev>
+   # all 200 after the import
+   ```
+
+Re-run the export/import whenever a chain starts failing at the TLS layer — XP
+never receives root updates (no Windows Update), so this is the standing
+refresh procedure.
