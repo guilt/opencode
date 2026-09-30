@@ -241,10 +241,13 @@ cd packages/opencode
 > piping it (a piping consumer that exits early kills the build mid-compile).
 
 > **Version string:** `Script.version` (`packages/script`) prefers the shell's
-> `OPENCODE_VERSION` env var over everything else — a stale value gets baked into the
-> binary via the `OPENCODE_VERSION` define and shows up in `--version`. Unset it before
-> building (without it, the script fetches the latest published version from npm —
-> or yields a `0.0.0-dev-<timestamp>` string when npm's version isn't usable).
+> `OPENCODE_VERSION` env var over everything else — the value gets baked into the
+> binary via the `OPENCODE_VERSION` define and shows up in `--version`. **Set it to a
+> published release (e.g. `1.18.18`) for a usable binary:** the hosted `opencode`
+> provider gates free-tier access on version >= 1.18.0, so a `0.0.0-dev-*` string
+> makes `opencode run -m opencode/...` fail. Leave it unset only for throwaway
+> builds (the script then fetches the latest npm version — or yields
+> `0.0.0-dev-<timestamp>` when npm's version isn't usable).
 
 ### Known upstream gap: FFF native library
 
@@ -257,7 +260,7 @@ unavailable until FFF publishes 32-bit Windows binaries.
 ## 4. Verifying
 
 ```sh
-dist/opencode-windows-x86/bin/opencode.exe --version   # 0.0.0-dev-<timestamp> (no OPENCODE_VERSION)
+dist/opencode-windows-x86/bin/opencode.exe --version   # 1.18.18 (OPENCODE_VERSION baked at build)
 dist/opencode-windows-x86/bin/opencode.exe --help      # renders the OpenTUI banner
 ```
 
@@ -271,6 +274,20 @@ If the OpenTUI render library fails to load you'll see
 del %USERPROFILE%\.cache\opencode\models.json
 opencode.exe models        # lists models, exit 0, models.json re-created
 ```
+
+**LLM smoke run on XP** (requires a real model round-trip):
+
+```bat
+opencode.exe run -m opencode/big-pickle "Reply with exactly: OK" < NUL
+rem → prints OK, exit 0
+```
+
+> **stdin note (XP):** scripted invocations must redirect stdin from `NUL`
+> (`< NUL`). A pipe carrying data fails with `EUNKNOWN: unknown error, read`, and a
+> content-bearing file redirect hangs (reproducible on XP; the same pipe pattern
+> works on a Win11 host, and bun's own stdin reads of pipes/files on XP are fine —
+> the edge is in opencode's `run`/TUI input path). Interactive TUI on a real
+> console is unaffected.
 
 ---
 
