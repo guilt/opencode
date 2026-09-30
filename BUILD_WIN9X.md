@@ -13,9 +13,9 @@ every fork and change involved, and how to reproduce the build.
 
 | Repo | Location | Fork | Role |
 | --- | --- | --- | --- |
-| `bun` | `D:\WS\Bun` | local (win9x) | win9x-compatible Bun (i586, XP/9x-capable) |
-| `opentui` | `D:\WS\opentui` | `guilt/opentui` | TUI render library; added win32-x86 native support |
-| `opencode` | `D:\WS\OpenCode` | `guilt/opencode` | This repo |
+| `bun` | `../Bun` | local (win9x) | win9x-compatible Bun (i586, XP/9x-capable) |
+| `opentui` | `../opentui` | `guilt/opentui` | TUI render library; added win32-x86 native support |
+| `opencode` | this repo | `guilt/opencode` | This repo |
 
 The OpenTUI fork (`guilt/opentui`, branch `main`) carries the 32-bit x86 fixes; OpenCode
 pins `@opentui/*` to `0.5.11` via `overrides` pointing at locally-packed fork tarballs.
@@ -24,7 +24,7 @@ pins `@opentui/*` to `0.5.11` via `overrides` pointing at locally-packed fork ta
 
 ## 1. The win9x Bun
 
-Built from `D:\WS\Bun` with `scripts/build.ts`, profile `win9x-release` (and
+Built from the sibling `../Bun` checkout with `scripts/build.ts`, profile `win9x-release` (and
 `win9x-debug --asan=true` for the AddressSanitizer diagnostics build). Key properties:
 
 - **Target:** `i586-pc-windows-msvc`, 32-bit PE (`coff-i386`), static CRT, no JIT (C loop).
@@ -86,7 +86,7 @@ These are committed on the Bun branch and are the reason the win9x build works:
   `select()` the same socket concurrently; XP then returns `WSAEINVAL`,
   mapped to `UV_EINVAL`, and usockets closed the socket mid-transfer — the
   residual `Failed to fetch models.dev` after the §6 lock fix. See §7 and
-  `D:\WS\Bun\BUILD_WIN9X.md` → "libuv: XP slow-select poll fix".
+  the Bun repo's `BUILD_WIN9X.md` → "libuv: XP slow-select poll fix".
 - **`node` shim hardlink (`src/install/lib.rs`)**: `CreateHardLinkW` rejects
   the `\\??\\` NT-object prefix on XP, so the `node` → `bun.exe` hardlink was
   never created (`bun x` couldn't run cached bins). Prefix stripped.
@@ -137,7 +137,7 @@ The fork adds 32-bit `win32-x86` support:
 The native build pins **Zig 0.16.0** (`.zig-version`). Use the x86_64 host Zig (the 32-bit
 host Zig has a build-system bug on 32-bit) — it cross-compiles fine. Required on PATH:
 that Zig, **NASM** (`build.zig` assembles `src/win9x_imports.asm` via `nasm -f win32`), and
-**GNU dlltool** (`D:\WS\EXTDEV\MinGW\x86\Bin\dlltool.exe` — NOT `lib.exe /def:`, see §5).
+**GNU dlltool** (a MinGW binutils `dlltool` on PATH — NOT `lib.exe /def:`, see §5).
 
 ```sh
 cd packages/native
@@ -195,7 +195,7 @@ bun pm pack --destination <repo-root>/dist-tarballs   # cwd: packages/keymap/dis
 mv dist-tarballs/opentui-core-win32-x86-0.5.11.tgz dist-tarballs/opentui-core-win32-x86-511.tgz
 ```
 
-The `dist-tarballs/` directory is expected at `D:\WS\opentui\dist-tarballs` (mirrored by the
+The `dist-tarballs/` directory is expected at `../opentui/dist-tarballs` (mirrored by the
 `file:../opentui/dist-tarballs/*.tgz` overrides in this repo's `package.json`).
 
 ---
@@ -231,7 +231,7 @@ do not un-track it. The script runs `Bun.build` with:
 
 ```sh
 cd packages/opencode
-D:\WS\Bun\build\release-i586\bun.exe script/build-win9x.ts
+../Bun/build/release-i586/bun.exe script/build-win9x.ts
 # → dist/opencode-windows-x86/bin/opencode.exe  (coff-i386, ~165 MB with the
 #   embedded Web UI; pass --skip-embed-web-ui to leave it out)
 ```
@@ -407,7 +407,7 @@ then returns `WSAEINVAL (10022)` on a perfectly healthy socket. libuv maps that 
 path only spawns select threads for readable/writable interest, empty interest
 completes immediately, and a live-socket WSAEINVAL retries (bounded, with a
 `SO_TYPE` liveness probe) instead of erroring the req. Full write-up and the
-patch-regen recipe: `D:\WS\Bun\BUILD_WIN9X.md` → "libuv: XP slow-select poll fix".
+patch-regen recipe: the Bun repo's `BUILD_WIN9X.md` → "libuv: XP slow-select poll fix".
 
 ### Verified on XP
 

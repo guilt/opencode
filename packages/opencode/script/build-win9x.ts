@@ -11,7 +11,7 @@
 //     (opentui-tree-sitter-worker.js), not a real path on disk.
 //
 // Run with the win9x Bun from packages/opencode:
-//   D:\WS\Bun\build\release-i586\bun.exe script/build-win9x.ts
+//   ../Bun/build/release-i586/bun.exe script/build-win9x.ts
 // → dist/opencode-windows-x86/bin/opencode.exe
 //
 // Kept in git (force-added despite script/build-*.ts ignore) so `git clean`
