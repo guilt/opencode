@@ -220,10 +220,15 @@ D:\WS\Bun\build\release-i586\bun.exe script/build-win9x.ts
 #   embedded Web UI; pass --skip-embed-web-ui to leave it out)
 ```
 
+> The `Bun.build` compile step prints nothing until it finishes; a full run on
+> this machine takes tens of minutes. Redirect output to a file rather than
+> piping it (a piping consumer that exits early kills the build mid-compile).
+
 > **Version string:** `Script.version` (`packages/script`) prefers the shell's
 > `OPENCODE_VERSION` env var over everything else — a stale value gets baked into the
 > binary via the `OPENCODE_VERSION` define and shows up in `--version`. Unset it before
-> building (without it, the script fetches the latest published version from npm).
+> building (without it, the script fetches the latest published version from npm —
+> or yields a `0.0.0-dev-<timestamp>` string when npm's version isn't usable).
 
 ### Known upstream gap: FFF native library
 
@@ -236,13 +241,20 @@ unavailable until FFF publishes 32-bit Windows binaries.
 ## 4. Verifying
 
 ```sh
-dist/opencode-windows-x86/bin/opencode.exe --version   # 0.0.0-win9x
+dist/opencode-windows-x86/bin/opencode.exe --version   # 0.0.0-dev-<timestamp> (no OPENCODE_VERSION)
 dist/opencode-windows-x86/bin/opencode.exe --help      # renders the OpenTUI banner
 ```
 
 If the OpenTUI render library fails to load you'll see
 `Failed to initialize OpenTUI render library: Unsupported OpenTUI Node asset target: win32-x86`
 — that means the fork tarballs / win32-x86 native package aren't wired up (see §2–§3).
+
+**models.dev fetch on XP** (exercises the libuv slow-select fix, §7):
+
+```bat
+del %USERPROFILE%\.cache\opencode\models.json
+opencode.exe models        # lists models, exit 0, models.json re-created
+```
 
 ---
 
@@ -350,3 +362,51 @@ Verified on XP with the exact broken state seeded first (2-hour-stale `*.lock` w
 children plus a stale `*.lock.breaker`): the new binary evicted the breaker, broke and
 re-acquired the `models-dev` lock within seconds, reached `message=init` normally, and
 the log contains no `Timed out waiting for lock` / `EINVAL` entries.
+
+---
+
+## 7. XP runtime: `Failed to fetch models.dev` (libuv slow-select race)
+
+### Symptom
+
+After the §6 lock fixes, models.dev and other HTTPS fetches on XP still failed
+intermittently with `The socket connection was closed unexpectedly` surfacing as
+`Failed to fetch models.dev` — disproportionately on larger transfers (a 2 MB
+favicon took ~20 s or died; repro harnesses of 2–5 MB HTTP/HTTPS bodies failed
+mid-stream).
+
+### Root cause
+
+XP always uses libuv's **slow select-thread poll path** for the win poller (the
+fast AFD path needs `WSA_FLAG_NO_HANDLE_INHERIT`, a Vista+ socket flag). Upstream
+`src/win/poll.c` could run **two select threads on the same socket concurrently**
+(a disconnect-only req submitted right before a combined one), and XP's `select()`
+then returns `WSAEINVAL (10022)` on a perfectly healthy socket. libuv maps that to
+`UV_EINVAL (-4071)` and usockets error-closes the socket mid-transfer.
+
+### Bun-side fix (landed)
+
+`patches/libuv/win-poll-slow-select-xp.patch` in the Bun fork, declared in
+`scripts/build/deps/libuv.ts` (applied after the rearm + abort patches): the slow
+path only spawns select threads for readable/writable interest, empty interest
+completes immediately, and a live-socket WSAEINVAL retries (bounded, with a
+`SO_TYPE` liveness probe) instead of erroring the req. Full write-up and the
+patch-regen recipe: `D:\WS\Bun\BUILD_WIN9X.md` → "libuv: XP slow-select poll fix".
+
+### Verified on XP
+
+- Both `fetch-repro` harnesses (favicon/models.dev/cachefly 2–5 MB, plain + TLS)
+  run clean repeatedly: all `OK`, exit 0, no fatal poll callbacks; transfer times
+  dropped to the normal range (favicon ~0.5 s vs ~20 s before).
+- TUI boot renders immediately, and with `models.json` deleted,
+  `opencode.exe models` re-fetches the catalog (5,264,597 bytes) and exits 0 —
+  no `Failed to fetch models.dev`, no `toPublicInfo` TypeError in any log.
+
+### Note: XP root certificates
+
+HTTPS uses the system CA store (`--use-system-ca` in `execArgv`). XP's root store
+is frozen/stale, so any certificate whose chain relies on roots rolled after XP's
+era fails TLS regardless of this transport fix — models.dev and the shipped model
+endpoints currently verify fine on the test box, but future root/leaf rollovers are
+a separate, expected risk worth re-checking when a fetch suddenly starts failing
+at the TLS layer instead of mid-transfer.
