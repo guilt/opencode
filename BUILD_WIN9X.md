@@ -34,7 +34,7 @@ Built from `D:\WS\Bun` with `scripts/build.ts`, profile `win9x-release` (and
   `SetThreadDescription`, etc.).
 - **ASAN (diagnostic):** `win9x-debug --asan=true` links with MSVC `link.exe` (see below).
 
-### 32-bit bug classes fixed in Bun
+### Bug classes fixed in Bun (32-bit + XP)
 
 These are committed on the Bun branch and are the reason the win9x build works:
 
@@ -72,8 +72,24 @@ These are committed on the Bun branch and are the reason the win9x build works:
   arrays, and the `ValueUndefined`/`ValueTrue` globals. Two 32-bit call-frame bugs fixed in
   the same pass: `size_t`/`intptr_t`/`uintptr_t` were typedef'd 64-bit (so
   `LOAD_ARGUMENTS_FROM_CALL_FRAME` read the argument list 24 bytes past its real start),
-  and `Bun_FFI_PointerOffsetToArgumentsList` (6 words on x64) must be **10** `size_t`
+  and   `Bun_FFI_PointerOffsetToArgumentsList` (6 words on x64) must be **10** `size_t`
   units on 32-bit (arg0 is at Register slot 5 × 8-byte slots).
+- **XP connect probes and reads (`packages/bun-usockets`)**: the
+  `MSG_PUSH_IMMEDIATE` recv-probe used to verify non-blocking connects is
+  Vista+ — on XP every probe returned `WSAEOPNOTSUPP`, so successful connects
+  read as refused (and failed ones could read as connected, wedging TLS on a
+  dead socket). Reads with the same flag never delivered data. Fixed by
+  verifying connect status via `SO_ERROR`, treating the XP probe error as
+  connect-OK, and using `MSG_DONTWAIT` for reads on XP.
+- **XP fetch() transport (`src/win/poll.c`, declared `patches/libuv/`)**: XP
+  always takes libuv's slow select-thread poll path, where two threads could
+  `select()` the same socket concurrently; XP then returns `WSAEINVAL`,
+  mapped to `UV_EINVAL`, and usockets closed the socket mid-transfer — the
+  residual `Failed to fetch models.dev` after the §6 lock fix. See §7 and
+  `D:\WS\Bun\BUILD_WIN9X.md` → "libuv: XP slow-select poll fix".
+- **`node` shim hardlink (`src/install/lib.rs`)**: `CreateHardLinkW` rejects
+  the `\\??\\` NT-object prefix on XP, so the `node` → `bun.exe` hardlink was
+  never created (`bun x` couldn't run cached bins). Prefix stripped.
 
 ### ASAN on win9x
 
